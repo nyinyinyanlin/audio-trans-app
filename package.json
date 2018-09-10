@@ -1,0 +1,26 @@
+{
+  "name": "transapp",
+  "version": "1.0.0",
+  "description": "App for transcription/subtitling of audio files",
+  "main": "index.js",
+  "scripts": {
+    "start": "sudo nodejs index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ygnbinhaus",
+    "translation",
+    "transcription",
+    "subtitling",
+    "audio"
+  ],
+  "author": "nyinyinyanlin",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.3",
+    "express-handlebars": "^3.0.0",
+    "handlebars": "^4.0.10",
+    "howler": "^2.0.4",
+    "socket.io": "^2.0.3"
+  }
+}

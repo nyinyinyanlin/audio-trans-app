@@ -1,0 +1,490 @@
+<style>
+	html, body {
+		height: 100%;
+		overflow: hidden;
+	}
+	#ctrlbox {
+		width: 100%;
+	}
+	#seekbar {
+		width: 80%;
+	}
+	#time {
+		width: 20%;
+		align: center;
+	}
+	#tarea {
+		width: 100%;
+		height: 70%;
+	}
+	#helpbtn {
+		position: fixed;
+		background-color: black;
+		top: 2%;
+		right: 2%;
+		height: 25px;
+		width: 25px;
+		border-radius: 25px;
+		text-align: center;
+		vertical-align: middle;
+		line-height: 25px;
+		font-weight: bolder;
+		color: white;
+		cursor: help;
+	}
+	#helpbox {
+		position: fixed;
+		background-color: rgba(0,0,0,0.8);
+		top: 20%;
+		left: 5%;
+		width: 85%;
+		padding: 20px;
+		height: auto;
+		border-color: white;
+		border-radius: 30px;
+		color: white;
+		text-align: center;
+		vertical-align: middle;
+	}
+	#helpmenu {
+		padding: 0;
+		color: white;
+		width: 100%;
+		height: 100%;
+	}
+	.key {
+		text-align: right;
+	}
+	.description {
+		text-align: left;
+		padding-left: 10px;
+	}
+</style>
+<div id="helpbox">
+	<h2>Keyboard Shortcuts</h2>
+	<table id="helpmenu">
+	  <tr>
+	    <td class="key">Alt+L</td>
+	    <td class="description">load audio file</td>
+	    <td class="key">Alt+U</td>
+	    <td class="description">unload audio file</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+P</td>
+	    <td class="description">play audio</td>
+	    <td class="key">Ctrl+Alt+P</td>
+	    <td class="description">pause audio</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+S</td>
+	    <td class="description">stop audio</td>
+	    <td class="key">Alt+X</td>
+	    <td class="description">toggle text box <> file selection</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+></td>
+	    <td class="description">foward 1 second</td>
+	    <td class="key">Alt+<</td>
+	    <td class="description">reverse 1 second</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Ctrl+Alt+></td>
+	    <td class="description">forward 10 seconds</td>
+	    <td class="key">Ctrl+Alt+<</td>
+	    <td class="description">reverse 10 seconds</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+T</td>
+	    <td class="description">insert timestamp</td>
+	    <td class="key">Alt+R</td>
+	    <td class="description">insert speaker</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+Up</td>
+	    <td class="description">volume up</td>
+	    <td class="key">Alt+Down</td>
+	    <td class="description">volume down</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+}</td>
+	    <td class="description">faster play rate</td>
+	    <td class="key">Alt+{</td>
+	    <td class="description">slower play rate</td>
+	  </tr>
+	  <tr>
+	    <td class="key">Alt+H</td>
+	    <td class="description">help menu</td>
+	    <td class="key">Alt+Q</td>
+	    <td class="description">save file(not available)</td>
+	  </tr>
+	</table>
+	<p>Please select the file from dropdown list and load. Unload to clear the loaded file and modified contents.Save regularly to make avoid modified contents from being lost.</p>
+</div>
+<div id="helpbtn">?</div>
+<div id="ctrlbox">
+	<select id="fileselect">
+		{{#each files}}
+		<option value="{{this}}">{{this}}</option>
+		{{/each}}
+	</select>
+	<input type="button" id="load" value="Load"></input>
+	<input type="button" id="unload" value="Unload"></input>
+	<input type="button" id="timestamp" value="Timestamp"></input> 
+	<input type="button" id="speaker" value="Speaker"></input> 
+	<input type="button" id="play" value="Play"></input>
+	<input type="button" id="pause" value="Pause"></input>
+	<input type="button" id="stop" value="Stop"></input>
+	<input type="button" id="prv10" value="<<"></input>
+	<input type="button" id="prv" value="<"></input>
+	<input type="button" id="nxt" value=">"></input>
+	<input type="button" id="nxt10" value=">>"></input>
+	<input type="button" id="save" value="Save"></input>
+	<input type="range" id="vol" min="0.0" max="1.0" step="0.1" value="0.7"></input>
+	<span>Vol: </span><span id="volume">7</span>
+	<input type="range" id="pbrate" min="0.5" max="1" step="0.1" value="1.0"></input>
+	<span>Rate: </span><span id="rate">1</span>
+</div>
+<div>
+<progress id="seekbar" value="0" max="100"></progress>
+<span id="curtime">11:32</span><span> | </span><span id="maxtime">12:10</span>
+</div>
+<textarea id="tarea">
+</textarea>
+<script>
+	var soundFile;
+	var howl;
+	var curTime;
+	var timer;
+	var ctrlKey = false;
+	var shiftKey = false;
+	var altKey = false;
+
+	function secondToTimeString(sec){		
+		var hh = Math.floor(sec/3600);	
+		var mm = Math.floor((sec-(hh*3600))/60);	
+		var ss = Math.round(sec - (hh*3600) - (mm*60));
+		if(hh<10){
+			hh = "0"+hh;
+		}
+		if(mm<10){
+			mm = "0" + mm;
+		}
+		if(ss<10){
+			ss = "0" + ss;
+		}
+		return hh+":"+mm+":"+ss;
+	}
+
+	function load(){
+		reset();
+			if(soundFile){
+				howl = new Howl({
+					src: [soundFile],
+					html5: true,
+					loop: false,
+					autoplay: false,
+					rate: parseFloat($("#pbrate").val()),
+					volume: parseFloat($("#vol").val())
+				});
+				howl.on("load",function(){
+					$("#maxtime").text(secondToTimeString(howl.duration()));
+					});
+			}
+	}
+
+	function unload(){
+		if(howl){
+			reset();
+		}
+	}
+	
+	function startTimer(){
+		if(howl){
+			seeker(howl.seek());
+			timer = setTimeout(function(){startTimer()},100);
+		}
+	}
+	
+	function stopTimer(){
+		if(timer){
+			clearTimeout(timer);
+			timer = null;
+		}
+	}	
+
+	function seeker(curTime){
+		if(howl){
+			$("#curtime").text(secondToTimeString(curTime));
+			$("#seekbar").val((100*curTime)/howl.duration());
+		}
+	}
+
+	function clickSeek(pos){
+		if(howl){
+			var time = Math.round((howl.duration() * pos)/100);
+			howl.seek(time);
+			seeker(time);
+		}
+	}
+
+	function reset(){
+		$("#maxtime").text("00:00:00");
+		$("#curtime").text("00:00:00");
+		$("#seekbar").val(0);
+		if(howl){
+			howl.unload();
+			howl = null;
+		}
+	}
+
+	function toggleFocus(){
+		if(!$("#tarea").is(":focus")){
+			$("#tarea").focus();
+		}else{
+			$("#fileselect").focus();
+		}
+	}
+
+	function play(){
+		if(howl){
+			if(!howl.playing()){
+				howl.play();
+				startTimer();
+			}
+		}
+	}
+
+	function pause(){
+		 if(howl){
+			if(howl.playing()){
+		                howl.pause();
+				stopTimer();
+			}
+                 }
+	}
+
+	function stop(){
+		 if(howl){
+                        howl.stop();
+			seeker(0);
+			stopTimer();
+                 }
+	}
+
+	function prv(){
+		if(howl){
+			howl.seek(howl.seek()-1);
+			seeker(howl.seek());		
+		}
+	}
+
+	function nxt(){
+		if(howl){
+			howl.seek(howl.seek()+1);
+			seeker(howl.seek());		
+		}
+	}
+	
+	function prv10(){
+		if(howl){
+			howl.seek(howl.seek()-10);
+			seeker(howl.seek());		
+		}
+	}
+
+	function nxt10(){
+		if(howl){
+			howl.seek(howl.seek()+10);
+			seeker(howl.seek());		
+		}
+	}
+
+	function timestamp(){
+		 if(howl){
+				$("#tarea").val($("#tarea").val()+'\n'+"["+secondToTimeString(howl.seek())+"]");
+			}
+	}
+
+	function speaker(){
+		 if(howl){
+				$("#tarea").focus();
+				$("#tarea").val($("#tarea").val()+'\n'+"<>"+'\n');
+				var curPos = $("#tarea").prop("selectionEnd");
+				$("#tarea").prop("selectionEnd",curPos-2);
+		}
+	}
+
+	function volUp(){
+		 if(howl){
+                        volChange((howl.volume()+0.1).toFixed(1));
+                 }
+	}
+
+	function volDown(){
+		 if(howl){
+			volChange((howl.volume()-0.1).toFixed(1));
+                 }
+	}
+
+	function volChange(vol){
+		if(howl){
+			howl.volume(vol);
+			$("#vol").val(howl.volume());
+			$("#volume").text(howl.volume()*10);
+		}else{
+			$("#vol").val(0.7);
+		}
+	}
+
+	function rateUp(){
+		 if(howl){
+			rateChange((howl.rate()+0.1).toFixed(1));                 
+		}
+	}
+
+	function rateDown(){
+		 if(howl){
+			rateChange((howl.rate()-0.1).toFixed(1));
+                 }
+	}
+	
+	function rateChange(rate){
+		if(howl){
+			if(rate>1)rate=1;
+			if(rate<0.5)rate=0.5;
+			howl.rate(rate);						
+			$("#pbrate").val(howl.rate());
+			$("#rate").text(howl.rate());
+		}else{
+			$("#pbrate").val(1);
+		}
+	}
+
+	$(document).ready(function(){
+		$("#helpbox").toggle();
+		reset();
+		$("#fileselect").focus();
+		$("#helpbtn").on('click',function(){
+				$("#helpbox").fadeToggle(200);
+		});
+		$("#seekbar").on('click', function (e){
+					var clickedPos = (e.pageX - this.offsetLeft) * this.max / this.offsetWidth;
+					clickSeek(clickedPos);
+			});
+		$("#fileselect").on('change',function(){
+			soundFile = this.value;
+		});
+		$("#load").on('click',function(){
+			load();
+		});
+		$("#unload").on('click',function(){
+			unload();
+		});
+		$("#timestamp").on('click',function(){
+			if(howl){
+				timestamp();
+			}
+		});
+		$("#speaker").on('click',function(){
+			if(howl){
+				speaker();
+			}
+		});
+		$("#play").on('click',function(){
+			play();
+		});
+		$("#pause").on('click',function(){ 
+			pause();
+                });
+		$("#stop").on('click',function(){
+			stop();
+		});
+		$("#prv").on('click',function(){
+			prv();
+		});
+		$("#nxt").on('click',function(){
+			nxt();
+		});
+		$("#prv10").on('click',function(){
+			prv10();
+		});
+		$("#nxt10").on('click',function(){
+			nxt10();
+		});
+		$("#vol").on('change',function(){
+			volChange(this.value);
+		});
+		$("#pbrate").on('change',function(){
+			rateChange(this.value);
+		});		
+		$(document).keydown(function(e) {
+			console.log(e.which);			
+			if(e.which == 18){
+				altKey = true;
+			}
+			if(e.which == 17){
+				ctrlKey = true;
+			}
+			if(e.which	== 76 && altKey){
+				load();
+			}
+			if(e.which	== 85 && altKey){
+				unload();
+			}
+			if(e.which	== 190 && altKey){
+				nxt();
+			}
+			if(e.which == 188 && altKey){
+				prv();
+			}
+			if(e.which == 190 && ctrlKey && altKey){
+				nxt10();
+			}
+			if(e.which == 188 && ctrlKey && altKey){
+				prv10();
+			}
+			if(e.which == 38 && altKey){
+				volUp();
+			}
+			if(e.which == 40 && altKey){
+				volDown();
+			}			
+			if(e.which ==  221 && altKey){
+				rateUp();
+			}
+			if(e.which == 219 && altKey){
+				rateDown();
+			}
+			if(e.which == 80 && altKey){
+				play();
+			}
+			if(e.which == 80 && altKey && ctrlKey){
+				pause();
+			}
+			if(e.which == 83 && altKey){
+				stop();
+			}
+			if(e.which == 84 && altKey){
+				timestamp();
+			}
+			if(e.which == 82 && altKey){
+				speaker();
+			}
+			if(e.which == 88 && altKey){
+				toggleFocus();
+			}
+			if(e.which == 72 && altKey){
+				$("#helpbox").fadeToggle(200);
+			}
+		});
+		$(document).keyup(function(e) {
+			if(e.which == 18){
+				altKey = false;
+			}			
+			if(e.which == 17){
+				ctrlKey = false;
+			}
+		});
+	});
+
+</script>
